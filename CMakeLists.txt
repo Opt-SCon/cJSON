@@ -3,5 +3,6 @@ project(cJSON)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(cJSON main.cpp
-        cJSON.h cJSON.c)
+add_executable(cJSON test.cpp
+        cJSON.h cJSON.c
+        test.cpp)
