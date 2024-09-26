@@ -8,11 +8,11 @@ extern "C"
 {
 #endif
 
-#if !defined(__WINDOWS__) && (defined(WIN32) || defined(WIN64) || defined(_MSC_VER) || defined(_WIN32))
-#define __WINDOWS__
+#if !defined(WINDOWS_) && (defined(WIN32) || defined(WIN64) || defined(_MSC_VER) || defined(_WIN32))
+#define WINDOWS_
 #endif
 
-#ifdef __WINDOWS__
+#ifdef WINDOWS_
 
 
 #define CJSON_CDECL __cdecl     // 函数调用约定，__cdecl 表示 C 语言调用约定
@@ -95,10 +95,10 @@ typedef struct cJSON {
 typedef struct cJSON_Hooks {
 	// 内存分配函数
 	void *(*malloc_fn)(size_t size);
-	void *(*free_fn)(void *pointer);
+	void (*free_fn)(void *pointer);
 } cJSON_Hooks;
 
-typedef int cJSON_bool;
+#define cJSON_bool int
 
 // 为了防止堆栈溢出，限制 cJSON 在拒绝解析之前嵌套数组/对象的深度
 #ifndef CJSON_NESTING_LIMIT
@@ -116,11 +116,27 @@ CJSON_PUBLIC(const char *) cJSON_Version();
 // 为 cJSON 提供 malloc, realloc 和 free 函数
 void cJSON_InitHooks(cJSON_Hooks* hooks);
 
-CJSON_PUBLIC(cJSON *)
-cJSON_New_Item(const cJSON_Hooks* hooks);
+CJSON_PUBLIC(cJSON *) cJSON_New_Item(const cJSON_Hooks* hooks);
 
-CJSON_PUBLIC(cJSON *)
-cJSON_CreateObject();
+static unsigned char* cJSON_strdup(const unsigned char* string, const cJSON_Hooks * hook);
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateObject();
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateArray();
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateString(const char *string);
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateTrue(cJSON_bool b);
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateFalse(cJSON_bool b);
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num);
+
+CJSON_PUBLIC(cJSON *) cJSON_CreateNull();
+
+CJSON_PUBLIC(void) cJSON_Delete(cJSON *item);
+
+CJSON_PUBLIC(cJSON *) cJSON_Parse(const char *value);
 
 #ifdef __cplusplus
 }
