@@ -20,7 +20,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const cJSON_Hook
     }
 
     length = strlen((const char*)string) + sizeof("");
-    copy = (unsigned char*)hook->allocate(length);
+    copy = (unsigned char*)hook->malloc_fn(length);
 
     if (copy == NULL) {
         return NULL;
@@ -32,7 +32,7 @@ static unsigned char* cJSON_strdup(const unsigned char* string, const cJSON_Hook
 }
 
 CJSON_PUBLIC(cJSON *) cJSON_New_Item(const cJSON_Hooks * const hooks) {
-    cJSON *node = (cJSON *)hooks->allocate(sizeof(cJSON));
+    cJSON *node = (cJSON *)hooks->malloc_fn(sizeof(cJSON));
     if (node) {
         memset(node, '\0', sizeof(cJSON));
     }
@@ -40,7 +40,7 @@ CJSON_PUBLIC(cJSON *) cJSON_New_Item(const cJSON_Hooks * const hooks) {
 }
 
 /**
- * @brief 释放 cJSON 节点， 常量字符串不释放
+ * @brief 释放 cJSON 节点 , 常量字符串不释放
  * 
  * @param c cJSON 节点
  */
@@ -52,12 +52,12 @@ void cJSON_Delete(cJSON *c) {
             cJSON_Delete(c->child);
         }
         if (!(c->type & cJSON_IsReference) && (c->valuestring != NULL)) {
-            global_hooks.deallocate(c->valuestring);
+            global_hooks.free_fn(c->valuestring);
         }
         if (!(c->type & cJSON_StringIsConst) && (c->string != NULL)) {
-            global_hooks.deallocate(c->string);
+            global_hooks.free_fn(c->string);
         }
-        global_hooks.deallocate(c);
+        global_hooks.free_fn(c);
         c = next;
     }
 }
@@ -149,7 +149,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateStringArray(const char **strings, int count) {
             return NULL;
         }
         if (i == 0) {
-            a->child = n;   // 第一个节点, 将 n 赋值给 a->child
+            a->child = n;   // 第一个节点，将 n 赋值给 a->child
         }
         else {
             suffix_object(p, n);    // 将 n 追加到 p 后面
@@ -170,7 +170,7 @@ static cJSON_bool add_item_to_list(cJSON *list, cJSON *item) {
         return 0;
     }
 
-    child = list->child;       
+    child = list->child;
     if (child == NULL) {
         list->child = item;    // array 没有子节点，直接将 item 赋值给 array->child
     } else {
@@ -183,7 +183,7 @@ static cJSON_bool add_item_to_list(cJSON *list, cJSON *item) {
 
 /**
  * @brief 将 item 以 string 为 key 添加到 object 中
- * @note item 可以是 任意cJSON类型
+ * @note item 可以是 任意 cJSON 类型
  * 
  * @param object 
  * @param string 
@@ -214,7 +214,7 @@ static cJSON_bool add_item_to_object(cJSON *object, const char * const string, c
     }
 
     if (!(item->type & cJSON_StringIsConst) && (item->string != NULL)) {    // item->string 不是常量，释放 item->string
-        hooks->deallocate(item->string);
+        hooks->free_fn(item->string);
     }
     
     item->string = new_key;

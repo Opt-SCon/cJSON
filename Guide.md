@@ -222,13 +222,13 @@ The type can be one of the following:
 
 Additionally there are the following two flags:
 
-* `cJSON_IsReference`: Specifies that the item that `child` points to and/or `valuestring` is not owned by this item, it is only a reference. So `cJSON_Delete` and other functions will only deallocate this item, not its `child`/`valuestring`.
-* `cJSON_StringIsConst`: This means that `string` points to a constant string. This means that `cJSON_Delete` and other functions will not try to deallocate `string`.
+* `cJSON_IsReference`: Specifies that the item that `child` points to and/or `valuestring` is not owned by this item, it is only a reference. So `cJSON_Delete` and other functions will only free_fn this item, not its `child`/`valuestring`.
+* `cJSON_StringIsConst`: This means that `string` points to a constant string. This means that `cJSON_Delete` and other functions will not try to free_fn `string`.
 
 ### Working with the data structure
 
 For every value type there is a `cJSON_Create...` function that can be used to create an item of that type.
-All of these will allocate a `cJSON` struct that can later be deleted with `cJSON_Delete`.
+All of these will malloc_fn a `cJSON` struct that can later be deleted with `cJSON_Delete`.
 Note that you have to delete them at some point, otherwise you will get a memory leak.  
 **Important**: If you have added an item to an array or an object already, you **mustn't** delete it with `cJSON_Delete`. Adding it to an array or object transfers its ownership so that when that array or object is deleted, 
 it gets deleted as well. You also could use `cJSON_SetValuestring` to change a `cJSON_String`'s `valuestring`, and you needn't to free the previous `valuestring` manually.
@@ -293,7 +293,7 @@ Given some JSON in a string (whether zero terminated or not), you can parse it w
 cJSON *json = cJSON_ParseWithLength(string, buffer_length);
 ```
 
-It will parse the JSON and allocate a tree of `cJSON` items that represents it. Once it returns, you are fully responsible for deallocating it after use with `cJSON_Delete`.
+It will parse the JSON and malloc_fn a tree of `cJSON` items that represents it. Once it returns, you are fully responsible for deallocating it after use with `cJSON_Delete`.
 
 The allocator used by `cJSON_Parse` is `malloc` and `free` by default but can be changed (globally) with `cJSON_InitHooks`.
 
@@ -313,7 +313,7 @@ Given a tree of `cJSON` items, you can print them as a string using `cJSON_Print
 char *string = cJSON_Print(json);
 ```
 
-It will allocate a string and print a JSON representation of the tree into it. Once it returns, you are fully responsible for deallocating it after use with your allocator. (usually `free`, depends on what has been set with `cJSON_InitHooks`).
+It will malloc_fn a string and print a JSON representation of the tree into it. Once it returns, you are fully responsible for deallocating it after use with your allocator. (usually `free`, depends on what has been set with `cJSON_InitHooks`).
 
 `cJSON_Print` will print with whitespace for formatting. If you want to print without formatting, use `cJSON_PrintUnformatted`.
 

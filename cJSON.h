@@ -1,5 +1,55 @@
-#ifndef CJSON_H
-#define CJSON_H
+
+
+#ifndef CJSON__H
+#define CJSON__H
+
+#ifdef __cplusplus      // C++ 中使用 C 语言的库
+extern "C"
+{
+#endif
+
+#if !defined(__WINDOWS__) && (defined(WIN32) || defined(WIN64) || defined(_MSC_VER) || defined(_WIN32))
+#define __WINDOWS__
+#endif
+
+#ifdef __WINDOWS__
+
+
+#define CJSON_CDECL __cdecl     // 函数调用约定，__cdecl 表示 C 语言调用约定
+#define CJSON_STDCALL __stdcall // 函数调用约定，__stdcall 表示标准调用约定
+
+#if !defined(CJSON_HIDE_SYMBOLS) && !defined(CJSON_EXPORT_SYMBOLS) && !defined(CJSON_IMPORT_SYMBOLS)    // 定义导出和导入符号
+#define CJSON_EXPORT_SYMBOLS
+#endif
+
+#if defined(CJSON_HIDE_SYMBOLS)   // 隐藏符号
+
+#define CJSON_PUBLIC(type) type CJSON_STDCALL
+
+#elif defined(CJSON_EXPORT_SYMBOLS)    // 导出符号
+#define CJSON_PUBLIC(type) __declspec(dllexport) type CJSON_STDCALL     // __declspec(dllexport) 表示导出符号
+
+#elif defined(CJSON_IMPORT_SYMBOLS)    // 导入符号
+#define CJSON_PUBLIC(type) __declspec(dllimport) type CJSON_STDCALL     // __declspec(dllimport) 表示导入符号
+#endif
+
+#else // 非 Windows 平台
+#define CJSON_CDECL
+#define CJSON_STDCALL
+
+#if (defined(__GNUC__) || defined(__SUNPRO_CC) || defined(__SUNPRO_C)) && defined(CJSON_API_VISIBILITY)    // GCC 编译器
+#define CJSON_PUBLIC(type) __attribute__((visibility("default"))) type      // __attribute__((visibility("default"))) 表示默认可见性
+#else
+#define CJSON_PUBLIC(type) type
+#endif
+#endif
+
+/* project version */
+#define CJSON_VERSION_MAJOR 0
+#define CJSON_VERSION_MINOR 0
+#define CJSON_VERSION_PATCH 1
+
+#include <stddef.h> // size_t
 
 /* cJSON Types: */
 #define cJSON_Invalid (0)	  // 非法类型
@@ -44,23 +94,36 @@ typedef struct cJSON {
 
 typedef struct cJSON_Hooks {
 	// 内存分配函数
-	void *(*allocate)(size_t size);
-	void *(*deallocate)(void *pointer);
+	void *(*malloc_fn)(size_t size);
+	void *(*free_fn)(void *pointer);
 } cJSON_Hooks;
 
-#ifndef CJSON_PUBLIC
-#define CJSON_PUBLIC(type) type
+typedef int cJSON_bool;
+
+// 为了防止堆栈溢出，限制 cJSON 在拒绝解析之前嵌套数组/对象的深度
+#ifndef CJSON_NESTING_LIMIT
+#define CJSON_NESTING_LIMIT 1000
 #endif
 
-cJSON_Hooks global_hooks;
+//为了防止堆栈溢出，在 cJSON 拒绝解析之前，限制循环引用的长度
+#ifndef CJSON_CIRCULAR_LIMIT
+#define CJSON_CIRCULAR_LIMIT 10000
+#endif
 
-/* 为 cJSON 提供 malloc、realloc 和 free 函数 */
-void cJSON_InitHooks(cJSON_Hooks *hooks);
+//以 string 返回 cJSON 的版本
+CJSON_PUBLIC(const char *) cJSON_Version();
+
+// 为 cJSON 提供 malloc, realloc 和 free 函数
+void cJSON_InitHooks(cJSON_Hooks* hooks);
 
 CJSON_PUBLIC(cJSON *)
-cJSON_New_Item(const cJSON_Hooks *hooks);
+cJSON_New_Item(const cJSON_Hooks* hooks);
 
 CJSON_PUBLIC(cJSON *)
-cJSON_CreateObject(void);
+cJSON_CreateObject();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
