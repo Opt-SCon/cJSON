@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <limits.h>
 #include "cJSON.h"
 
 /* 错误信息 */
@@ -133,7 +134,7 @@ static char *ensure(printbuffer *p, size_t needed) {
         p->length = 0, p->buffer = 0;
         return NULL;
     }
-    if (newbuffer) memcpy(newbuffer, p->buffer, p->length); // 拷贝原来的内容
+    memcpy(newbuffer, p->buffer, p->length); // 拷贝原来的内容
     cJSON_free(p->buffer); // 释放原来的内存
     p->length = newsize;    // 更新长度
     p->buffer = newbuffer;  // 更新内容
@@ -165,7 +166,8 @@ static char *print_number(cJSON *item, printbuffer *p) {
         if (str) {
             if (fabs(floor(d) - d) <= DBL_EPSILON && fabs(d) < 1.0e60) sprintf(str, "%.0f", d);
             else if (fabs(d) < 1.0e-6 || fabs(d) > 1.0e9) sprintf(str, "%e", d);
-            else sprintf(str, "%f", d);
+            else
+                sprintf(str, "%f", d);
         }
     }
     return str;
@@ -191,33 +193,52 @@ static const char *parse_string(cJSON *item, const char *str) {
     char *out;
     int len = 0;
     unsigned uc, uc2;
-    if (*str != '\"') { ep = str; return NULL; } // 非法输入，不是一个字符串
+    if (*str != '\"') {
+        ep = str;
+        return NULL;
+    } // 非法输入，不是一个字符串
 
     while (*ptr != '\"' && *ptr && ++len) if (*ptr++ == '\\') ptr++; // 计算字符串长度
-    if (*ptr != '\"') { ep = ptr; return NULL; } // 非法输入，没有找到字符串的结束
+    if (*ptr != '\"') {
+        ep = ptr;
+        return NULL;
+    } // 非法输入，没有找到字符串的结束
 
     out = (char *) cJSON_malloc(len + 1); // 分配内存
     if (!out) return NULL;
 
-    ptr = str + 1; ptr2 = out; // 重新指向字符串
+    ptr = str + 1;
+    ptr2 = out; // 重新指向字符串
     while (*ptr != '\"' && *ptr) {
         if (*ptr != '\\') *ptr2++ = *ptr++;
         else {
             ptr++;
             switch (*ptr) {
-                case 'b': *ptr2++ = '\b'; break;
-                case 'f': *ptr2++ = '\f'; break;
-                case 'n': *ptr2++ = '\n'; break;
-                case 'r': *ptr2++ = '\r'; break;
-                case 't': *ptr2++ = '\t'; break;
+                case 'b':
+                    *ptr2++ = '\b';
+                    break;
+                case 'f':
+                    *ptr2++ = '\f';
+                    break;
+                case 'n':
+                    *ptr2++ = '\n';
+                    break;
+                case 'r':
+                    *ptr2++ = '\r';
+                    break;
+                case 't':
+                    *ptr2++ = '\t';
+                    break;
                 case 'u': {                // 处理 Unicode 编码
-                    uc = parse_hex4(ptr + 1); ptr += 4;         // 解析 4 位的 Unicode 编码
+                    uc = parse_hex4(ptr + 1);
+                    ptr += 4;         // 解析 4 位的 Unicode 编码
 
                     if ((uc >= 0xDC00 && uc <= 0xDFFF) || uc == 0) break; // 无效的 Unicode 编码（低位代理项）
 
                     if (uc >= 0xD800 && uc <= 0xDBFF) {          // 高位代理项
                         if (ptr[1] != '\\' || ptr[2] != 'u') break; // 缺少低位代理项
-                        uc2 = parse_hex4(ptr + 3); ptr += 6;       // 解析低位代理项
+                        uc2 = parse_hex4(ptr + 3);
+                        ptr += 6;       // 解析低位代理项
                         if (uc2 < 0xDC00 || uc2 > 0xDFFF) break;   // 无效的 Unicode 编码（高位代理项）
                         uc = 0x10000 + (((uc & 0x3FF) << 10) | (uc2 & 0x3FF)); // 合并高位和低位代理项
                     }
@@ -229,16 +250,26 @@ static const char *parse_string(cJSON *item, const char *str) {
                     ptr2 += len;
 
                     switch (len) {
-                        case 4: *--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6;
-                        case 3: *--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6;
-                        case 2: *--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6;
-                        case 1: *--ptr2 = (uc | firstByteMark[len]);
-                        default: break;
+                        case 4:
+                            *--ptr2 = (char) ((uc | 0x80) & 0xBF);
+                            uc >>= 6;
+                        case 3:
+                            *--ptr2 = (char) ((uc | 0x80) & 0xBF);
+                            uc >>= 6;
+                        case 2:
+                            *--ptr2 = (char) ((uc | 0x80) & 0xBF);
+                            uc >>= 6;
+                        case 1:
+                            *--ptr2 = (char) (uc | firstByteMark[len]);
+                        default:
+                            break;
                     }
                     ptr2 += len;
                     break;
                 }
-                default: *ptr2++ = *ptr; break;
+                default:
+                    *ptr2++ = *ptr;
+                    break;
             }
             ptr++;
         }
@@ -250,6 +281,194 @@ static const char *parse_string(cJSON *item, const char *str) {
     return ptr;
 }
 
-cJSON *cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated) {
+/* 将提供的 string 渲染为可以打印的转义版本。 */
+static char *print_string_ptr(const char *str, printbuffer *p) {
+    const char *ptr;
+    char *ptr2, *out;
+    size_t len = 0;
+    int flag = 0;
+    unsigned char token;
 
+    if (!str) {
+        if (p) out = ensure(p, 3);          // 3 个字符：左右引号和 \0
+        else out = (char *) cJSON_malloc(3);
+        if (!out) return NULL;
+        strcpy(out, "\"\"");
+        return out;
+    }
+
+    for (ptr = str; *ptr; ptr++)
+        flag |= ((*ptr > 0 && *ptr < 32) || (*ptr == '\"') || (*ptr == '\\'));   // ASCII 控制字符、引号、反斜杠
+
+    if (!flag) {
+        len = ptr - str;
+
+        if (p) out = ensure(p, len + 3);
+        else out = (char *) cJSON_malloc(len + 3);
+
+        if (!out) return NULL;
+        ptr2 = out;
+        *ptr2++ = '\"';
+        strcpy(ptr2, str);
+        ptr2[len] = '\"';
+        ptr2[len + 1] = 0;
+
+        return out;
+    }
+
+    ptr = str;
+    while ((token = *ptr) && ++len) {       // 计算转义后的字符串长度，\X 多占 1 个字符 以及 ASCII 控制字符 \uXXXX 多占用 5 个字符
+        if (strchr("\"\\\b\f\n\r\t", token)) len++;
+        else if (token < 32) len += 5;
+        ptr++;
+    }
+
+    if (p) out = ensure(p, len + 3);
+    else out = (char *) cJSON_malloc(len + 3);
+
+    if (!out) return NULL;
+
+    ptr2 = out;
+    ptr = str;
+    *ptr2++ = '\"';
+    while (*ptr) {
+        if ((unsigned char)*ptr > 31 && *ptr != '\"' && *ptr != '\\') *ptr2++ = *ptr++;
+        else {
+            *ptr2++ = '\\';
+            switch (token = *ptr++) {
+                case '\\':
+                    *ptr2++ = '\\';
+                    break;
+                case '\"':
+                    *ptr2++ = '\"';
+                    break;
+                case '\b':
+                    *ptr2++ = 'b';
+                    break;
+                case '\f':
+                    *ptr2++ = 'f';
+                    break;
+                case '\n':
+                    *ptr2++ = 'n';
+                    break;
+                case '\r':
+                    *ptr2++ = 'r';
+                    break;
+                case '\t':
+                    *ptr2++ = 't';
+                    break;
+                default:
+                    sprintf(ptr2, "u%04x", token);
+                    ptr2 += 5;
+                    break;
+            }
+        }
+    }
+    *ptr2++ = '\"';
+    *ptr2 = 0;
+    return out;
+}
+
+/* 利用 print_string_ptr 将字符串打印到缓冲区 */
+static char *print_string(cJSON *item, printbuffer *p) {
+    return print_string_ptr(item->valuestring, p);
+}
+
+/* 跳过空白字符 */
+static const char *skip(const char *in) {
+    while (in && *in && (unsigned char) *in <= 32) in++;
+    return in;
+}
+
+/* 先声明核心解析/输出函数 */
+static const char *parse_value(cJSON *item, const char *value);
+static const char *parse_array(cJSON *item, const char *value);
+static const char *parse_object(cJSON *item, const char *value);
+static char *print_value(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
+static char *print_array(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
+static char *print_object(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
+
+/* 根据选项分析 JSON 文本并将其转换为 cJSON 对象 */
+cJSON *cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated) {
+    const char *end = NULL;
+    cJSON *c = cJSON_New_Item();
+    ep = NULL;
+    if (!c) return NULL; /* 内存分配失败 */
+
+    end = parse_value(c, skip(value));
+    if (!end) {
+        cJSON_Delete(c);
+        return NULL;
+    } /* 解析失败 */
+
+    /* 如果需要以 \0 结尾，则检查是否以 \0 结尾 */
+    if (require_null_terminated) {
+        end = skip(end);
+        if (*end) {
+            cJSON_Delete(c);
+            ep = end;
+            return NULL;
+        }
+    }
+    if (return_parse_end) *return_parse_end = end;
+    return c;
+}
+
+/* 解析 cJSON 对象的数组部分 */
+static const char *parse_array(cJSON *item, const char *value) {
+    cJSON *child;
+    if (*value != '[') {
+        ep = value;
+        return NULL;
+    } // 非法输入
+
+    item->type = cJSON_Array;
+    value = skip(value + 1);
+    if (*value == ']') return value + 1; // 空数组
+
+    item->child = child = cJSON_New_Item();
+    if (!item->child) return NULL; // 内存分配失败
+
+    value = skip(parse_value(child, skip(value)));
+
+}
+
+/* 解析一个 cJSON 对象并添加到 cJSON 对象中 */
+static const char *parse_value(cJSON *item, const char *value) {
+    if (!value) return NULL; // 无效输入
+
+    if (!strncmp(value, "null", 4)) {       // 解析 null
+        item->type = cJSON_NULL;
+        return value + 4;
+    }
+
+    if (!strncmp(value, "false", 5)) {      // 解析 false
+        item->type = cJSON_False;
+        return value + 5;
+    }
+
+    if (!strncmp(value, "true", 5)) {
+        item->type = cJSON_True;            // 解析 true
+        item->valueint = 1;
+        return value + 4;
+    }
+
+    if (*value == '\"') {                   // 解析字符串
+        return parse_string(item, value);
+    }
+
+    if (*value == '-' || (*value >= '0' && *value <= '9')) { // 解析数字
+        return parse_number(item, value);
+    }
+
+    if (*value == '[') {
+        return parse_array(item, value);
+    }
+
+    if (*value == '{') {
+        return parse_object(item, value);
+    }
+
+    ep = value;
+    return NULL;                        // 无法解析
 }
