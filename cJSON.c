@@ -952,3 +952,80 @@ cJSON *cJSON_GetObjectItem(const cJSON *object, const char *string) {
     while (c && cJSON_strcasecmp(c->string, string)) c = c->next;
     return c;
 }
+
+/* 将一个 cJSON 对象添加到数组链中 */
+static void suffix_object(cJSON *prev, cJSON *item) {
+    prev->next = item;
+    item->prev = prev;
+}
+
+/**
+ * @brief 创建一个 cJSON 项的引用
+ *
+ * @param item 要引用的 cJSON 项
+ * @return 新创建的 cJSON 引用项  ,如果内存分配失败则返回 NULL
+ */
+static cJSON *create_reference(cJSON *item) {
+    cJSON *ref = cJSON_New_Item();
+    if (!ref) return NULL;
+    memcpy(ref, item, sizeof(cJSON));
+    ref->string = NULL;
+    ref->type |= cJSON_IsReference;
+    ref->next = ref->prev = NULL;
+    return ref;
+}
+
+void cJSON_AddItemToArray(cJSON *array, cJSON *item) {
+    cJSON *c = array->child;
+    if (!item) return;
+    if (!c) {
+        array->child = item;
+    } else {
+        while (c && c->next) c = c->next;
+        suffix_object(c, item);
+    }
+}
+
+void cJSON_AddItemToObject(cJSON *object, const char *string, cJSON *item) {
+    if (!item) return;
+    if (item->string) cJSON_free(item->string);
+    item->string = cJSON_strdup(string);
+    cJSON_AddItemToArray(object, item);
+}
+
+/**
+ * @brief 将 cJSON 项添加到 cJSON 对象中 ,使用常量字符串作为键名
+ *
+ * @param object 目标 cJSON 对象
+ * @param string 新项的键名 (常量字符串)
+ * @param item 要添加的 cJSON 项
+ */
+void cJSON_AddItemToObjectCS(cJSON *object, const char *string, cJSON *item) {
+    if (!item) return;
+    if (!(item->type & cJSON_StringIsConst) && item->string) cJSON_free(item->string);
+    item->string = (char *) string;
+    item->type |= cJSON_StringIsConst;
+    cJSON_AddItemToArray(object, item);
+}
+
+void cJSON_AddItemReferenceToArray(cJSON *array, cJSON *item) {
+    cJSON_AddItemToArray(array, create_reference(item));
+}
+
+void cJSON_AddItemReferenceToObject(cJSON *object, const char *string, cJSON *item) {
+    cJSON_AddItemToObject(object, string, create_reference(item));
+}
+
+cJSON *cJSON_DetachItemFromArray(cJSON *array, int which) {
+    cJSON *c = array->child;
+    while (c && which > 0) {
+        --which;
+        c = c->next;
+    }
+    if (!c) return NULL;
+    if (c->prev) c->prev->next = c->next;
+    if (c->next) c->next->prev = c->prev;
+    if (c == array->child) array->child = c->next;
+    c->prev = c->next = NULL;
+    return c;
+}
