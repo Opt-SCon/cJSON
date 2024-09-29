@@ -68,8 +68,13 @@ void cJSON_Delete(cJSON *c) {
     }
 }
 
-/* 解析一个数字并添加到 cJSON 对象中 */
-static const char *parse_number(cJSON *item, const char *num) {
+/**
+ * @brief 解析一个数字并添加到 cJSON 对象中
+ *
+ * @param item cJSON 对象，用于存储解析后的数字
+ * @param num 指向数字字符串的指针
+ * @return const char* 成功时返回下一个要解析的位置，失败时返回 NULL
+ */static const char *parse_number(cJSON *item, const char *num) {
     double n = 0, sign = 1, scale = 0;      // sign 正负号，scale 小数部分位数
     int subscale = 0, signsubscale = 1;     // 科学计数法的指数部分和正负号
 
@@ -119,8 +124,13 @@ typedef struct {
     size_t offset;          // 缓冲区偏移
 } printbuffer;
 
-/* 检查缓冲区是否足够，不够则重新分配内存 */
-static char *ensure(printbuffer *p, size_t needed) {
+/**
+ * @brief 检查缓冲区是否足够，不够则重新分配内存
+ *
+ * @param p 指向 printbuffer 的指针
+ * @param needed 需要的额外空间大小
+ * @return char* 成功时返回新的缓冲区指针，失败时返回 NULL
+ */static char *ensure(printbuffer *p, size_t needed) {
     char *newbuffer;
     size_t newsize;
     if (!p || !p->buffer) return NULL;
@@ -141,8 +151,12 @@ static char *ensure(printbuffer *p, size_t needed) {
     return p->buffer + p->offset; // 返回新的偏移
 }
 
-/* 更新缓冲区的偏移 */
-static size_t update_offset(printbuffer *p) {
+/**
+ * @brief 更新缓冲区的偏移
+ *
+ * @param p 指向 printbuffer 的指针
+ * @return size_t 返回更新后的偏移量
+ */static size_t update_offset(printbuffer *p) {
     if (!p || !p->buffer) return 0;
     p->offset += strlen(p->buffer + p->offset); // 更新偏移
     return p->offset;
@@ -187,6 +201,13 @@ static unsigned parse_hex4(const char *str) {
 
 /* 解析一个字符串并添加到 cJSON 对象中 */
 static const unsigned char firstByteMark[7] = {0, 0, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC};     // UTF-8 编码的第一个字节的掩码
+/**
+ * @brief 解析 JSON 字符串值
+ *
+ * @param item cJSON 对象，用于存储解析后的字符串
+ * @param str 指向 JSON 字符串的指针
+ * @return const char* 成功时返回下一个要解析的位置，失败时返回 NULL
+ */
 static const char *parse_string(cJSON *item, const char *str) {
     const char *ptr = str + 1;
     char *ptr2;
@@ -281,8 +302,13 @@ static const char *parse_string(cJSON *item, const char *str) {
     return ptr;
 }
 
-/* 将提供的 string 渲染为可以打印的转义版本。 */
-static char *print_string_ptr(const char *str, printbuffer *p) {
+/**
+ * @brief 将提供的 string 渲染为可以打印的转义版本，返回新的字符串
+ *
+ * @param str 指向要打印的字符串的指针
+ * @param p 指向 printbuffer 的指针，用于存储转换后的字符串
+ * @return char* 成功时返回转换后的字符串，失败时返回 NULL
+ */static char *print_string_ptr(const char *str, printbuffer *p) {
     const char *ptr;
     char *ptr2, *out;
     size_t len = 0;
@@ -332,7 +358,7 @@ static char *print_string_ptr(const char *str, printbuffer *p) {
     ptr = str;
     *ptr2++ = '\"';
     while (*ptr) {
-        if ((unsigned char)*ptr > 31 && *ptr != '\"' && *ptr != '\\') *ptr2++ = *ptr++;
+        if ((unsigned char) *ptr > 31 && *ptr != '\"' && *ptr != '\\') *ptr2++ = *ptr++;
         else {
             *ptr2++ = '\\';
             switch (token = *ptr++) {
@@ -369,12 +395,22 @@ static char *print_string_ptr(const char *str, printbuffer *p) {
     return out;
 }
 
-/* 利用 print_string_ptr 将字符串打印到缓冲区 */
-static char *print_string(cJSON *item, printbuffer *p) {
+/**
+ * @brief 利用 print_string_ptr 将 cJSON 对象的字符串打印到缓冲区
+ *
+ * @param item cJSON 对象
+ * @param p 指向 printbuffer 的指针，用于存储转换后的字符串
+ * @return char* 成功时返回转换后的字符串，失败时返回 NULL
+ */static char *print_string(cJSON *item, printbuffer *p) {
     return print_string_ptr(item->valuestring, p);
 }
 
-/* 跳过空白字符 */
+/**
+ * @brief 跳过空白字符
+ *
+ * @param in 指向字符串的指针
+ * @return const char* 返回跳过空白字符后的指针位置
+ */
 static const char *skip(const char *in) {
     while (in && *in && (unsigned char) *in <= 32) in++;
     return in;
@@ -382,13 +418,25 @@ static const char *skip(const char *in) {
 
 /* 先声明核心解析/输出函数 */
 static const char *parse_value(cJSON *item, const char *value);
+
 static const char *parse_array(cJSON *item, const char *value);
+
 static const char *parse_object(cJSON *item, const char *value);
+
 static char *print_value(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
+
 static char *print_array(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
+
 static char *print_object(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p);
 
-/* 根据选项分析 JSON 文本并将其转换为 cJSON 对象 */
+/**
+ * @brief 使用可选参数解析 JSON 字符串并创建 cJSON 对象
+ *
+ * @param value 指向 JSON 字符串的指针
+ * @param return_parse_end 可选参数，用于返回解析结束的位置
+ * @param require_null_terminated 如果为真，则要求 JSON 字符串以 null 结尾
+ * @return cJSON* 成功时返回新创建的 cJSON 对象，失败时返回 NULL
+ */
 cJSON *cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated) {
     const char *end = NULL;
     cJSON *c = cJSON_New_Item();
@@ -414,26 +462,13 @@ cJSON *cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJS
     return c;
 }
 
-/* 解析 cJSON 对象的数组部分 */
-static const char *parse_array(cJSON *item, const char *value) {
-    cJSON *child;
-    if (*value != '[') {
-        ep = value;
-        return NULL;
-    } // 非法输入
-
-    item->type = cJSON_Array;
-    value = skip(value + 1);
-    if (*value == ']') return value + 1; // 空数组
-
-    item->child = child = cJSON_New_Item();
-    if (!item->child) return NULL; // 内存分配失败
-
-    value = skip(parse_value(child, skip(value)));
-
-}
-
-/* 解析一个 cJSON 对象并添加到 cJSON 对象中 */
+/**
+ * @brief 解析一个 JSON 值并将其添加到 cJSON 对象中
+ *
+ * @param item cJSON 对象
+ * @param value 指向 JSON 字符串的指针
+ * @return const char* 成功时返回下一个要解析的位置，失败时返回 NULL
+ */
 static const char *parse_value(cJSON *item, const char *value) {
     if (!value) return NULL; // 无效输入
 
@@ -471,4 +506,449 @@ static const char *parse_value(cJSON *item, const char *value) {
 
     ep = value;
     return NULL;                        // 无法解析
+}
+
+/**
+ * @brief 解析 JSON 数组
+ *
+ * @param item cJSON 对象
+ * @param value 指向 JSON 字符串的指针
+ * @return const char* 成功时返回下一个要解析的位置，失败时返回 NULL
+ */
+static const char *parse_array(cJSON *item, const char *value) {
+    cJSON *child;
+    if (*value != '[') {
+        ep = value;
+        return NULL;
+    } // 非法输入
+
+    item->type = cJSON_Array;
+    value = skip(value + 1);
+    if (*value == ']') return value + 1; // 空数组
+
+    item->child = child = cJSON_New_Item();
+    if (!item->child) return NULL; // 内存分配失败
+
+    value = skip(parse_value(child, skip(value)));
+    if (!value) return NULL; // 解析失败
+
+    while (*value == ',') {
+        cJSON *new_item;
+        if (!(new_item = cJSON_New_Item())) return NULL; // 内存分配失败
+        child->next = new_item, new_item->prev = child, child = new_item;
+        value = skip(parse_value(child, skip(value + 1)));
+        if (!value) return NULL; // 解析失败
+    }
+
+    if (*value == ']') return value + 1; // 解析成功
+    ep = value;
+    return NULL; // 解析失败
+}
+
+/**
+ * @brief 解析 JSON 对象
+ *
+ * @param item cJSON 对象
+ * @param value 指向 JSON 字符串的指针
+ * @return const char* 成功时返回下一个要解析的位置，失败时返回 NULL
+ */static const char *parse_object(cJSON *item, const char *value) {
+    cJSON *child;
+    if (*value != '{') {
+        ep = value;
+        return NULL;
+    } // 非法输入
+
+    item->type = cJSON_Object;
+    value = skip(value + 1);
+    if (*value == '}') return value + 1; // 空对象
+
+    item->child = child = cJSON_New_Item();
+    if (!item->child) return NULL; // 内存分配失败
+
+    value = skip(parse_string(child, skip(value)));
+    if (!value) return NULL; // 解析失败
+
+    child->string = child->valuestring;
+    child->valuestring = NULL;
+
+    if (*value != ':') {
+        ep = value;
+        return NULL;
+    } // 非法输入
+
+    value = skip(parse_value(child, skip(value + 1)));
+    if (!value) return NULL; // 解析失败
+
+    while (*value == ',') {
+        cJSON *new_item;
+
+        if (!(new_item = cJSON_New_Item())) return NULL; // 内存分配失败
+
+        child->next = new_item, new_item->prev = child, child = new_item;
+
+        value = skip(parse_string(child, skip(value + 1)));
+        if (!value) return NULL; // 解析失败
+
+        child->string = child->valuestring;
+        child->valuestring = NULL;
+
+        if (*value != ':') {
+            ep = value;
+            return NULL;
+        } // 非法输入
+
+        value = skip(parse_value(child, skip(value + 1)));
+        if (!value) return NULL; // 解析失败
+    }
+
+    if (*value == '}') return value + 1; // 解析成功
+    ep = value;
+    return NULL; // 解析失败
+}
+
+/**
+ * @brief 将 cJSON 对象转换为 JSON 字符串
+ *
+ * @param item cJSON 对象
+ * @param depth 当前对象的嵌套深度
+ * @param fmt 是否格式化输出
+ * @param p 指向 printbuffer 的指针，用于存储转换后的字符串
+ * @return char* 成功时返回转换后的字符串，失败时返回 NULL
+ */static char *print_value(cJSON *item, int depth, int fmt, printbuffer *p) {
+    char *out = NULL;
+    if (!item) return NULL;
+
+    if (p) {
+        switch ((item->type) & 255) {
+            case cJSON_NULL: {
+                out = ensure(p, 5);
+                if (out) strcpy(out, "null");
+                break;
+            }
+            case cJSON_False: {
+                out = ensure(p, 6);
+                if (out) strcpy(out, "false");
+                break;
+            }
+            case cJSON_True: {
+                out = ensure(p, 5);
+                if (out) strcpy(out, "true");
+                break;
+            }
+            case cJSON_Number: {
+                out = print_number(item, p);
+                break;
+            }
+            case cJSON_String: {
+                out = print_string(item, p);
+                break;
+            }
+            case cJSON_Array: {
+                out = print_array(item, depth, fmt, p);
+                break;
+            }
+            case cJSON_Object: {
+                out = print_object(item, depth, fmt, p);
+                break;
+            }
+            default:
+                break;
+        }
+    } else {
+        switch ((item->type) & 255) {
+            case cJSON_NULL: {
+                out = cJSON_strdup("null");
+                break;
+            }
+            case cJSON_False: {
+                out = cJSON_strdup("false");
+                break;
+            }
+            case cJSON_True: {
+                out = cJSON_strdup("true");
+                break;
+            }
+            case cJSON_Number: {
+                out = print_number(item, 0);
+                break;
+            }
+            case cJSON_String: {
+                out = print_string(item, 0);
+                break;
+            }
+            case cJSON_Array: {
+                out = print_array(item, depth, fmt, 0);
+                break;
+            }
+            case cJSON_Object: {
+                out = print_object(item, depth, fmt, 0);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return out;
+}
+
+/**
+ * @brief 将 cJSON 数组转换为 JSON 字符串
+ *
+ * @param item cJSON 对象
+ * @param depth 当前对象的嵌套深度
+ * @param fmt 是否格式化输出
+ * @param p 指向 printbuffer 的指针，用于存储转换后的字符串
+ * @return char* 成功时返回转换后的字符串，失败时返回 NULL
+ */
+static char *print_array(cJSON *item, int depth, int fmt, printbuffer *p) {
+    char **entries;
+    char *out = NULL, *ptr, *ret;
+    size_t len = 5;
+    cJSON *child = item->child;
+    size_t numentries = 0, i = 0, fail = 0;
+    size_t tmplen = 0;
+
+    while (child) numentries++, child = child->next;    // 计算数组元素个数
+
+    if (!numentries) {
+        if (p) out = ensure(p, 3);
+        else out = (char *) cJSON_malloc(3);
+        if (out) strcpy(out, "[]");
+        return out;
+    }
+
+    if (p) {    // 为数组元素分配内存
+        i = p->offset;
+        ptr = ensure(p, 1);
+        if (!ptr) return NULL;
+        *ptr = '[';
+        p->offset++;
+        child = item->child;
+
+        while (child && !fail) {
+            print_value(child, depth + 1, fmt, p);
+            p->offset = update_offset(p);
+            if (child->next) {  // 添加逗号
+                len = fmt ? 2 : 1;          // 逗号和空格
+                ptr = ensure(p, len + 1);
+                if (!ptr) return NULL;
+                *ptr++ = ',';
+                if (fmt) *ptr++ = ' ';
+                *ptr = 0;
+                p->offset += len;
+            }
+            child = child->next;
+        }
+
+        ptr = ensure(p, 2);
+        if (!ptr) return NULL;
+        *ptr++ = ']';
+        *ptr = 0;
+        out = p->buffer + i;
+    } else {
+        // 为数组元素分配内存
+        entries = (char **) cJSON_malloc(numentries * sizeof(char *));
+        if (!entries) return NULL;
+        memset(entries, 0, numentries * sizeof(char *));
+
+        child = item->child;
+        while (child && !fail) {
+            ret = print_value(child, depth + 1, fmt, 0);
+            entries[i++] = ret;
+            if (ret) len += strlen(ret) + 2 + (fmt ? 1 : 0);        // 字符串长度 + 逗号 + 空格
+            else fail = 1;
+            child = child->next;
+        }
+
+        if (!fail) out = (char *) cJSON_malloc(len);
+        if (!out) fail = 1;
+
+        if (fail) {
+            for (i = 0; i < numentries; i++) if (entries[i]) cJSON_free(entries[i]);
+            cJSON_free(entries);
+            return NULL;
+        }
+
+        *out = '[';
+        ptr = out + 1;
+        *ptr = 0;
+        for (i = 0; i < numentries; i++) {
+            tmplen = strlen(entries[i]);
+            memcpy(ptr, entries[i], tmplen);
+            ptr += tmplen;
+            if (i != numentries - 1) {      // 添加逗号
+                *ptr++ = ',';
+                if (fmt) {
+                    *ptr++ = ' ';
+                }
+                *ptr = 0;
+            }
+            cJSON_free(entries[i]);
+        }
+        cJSON_free(entries);
+        *ptr++ = ']';
+        *ptr++ = 0;
+    }
+    return out;
+}
+
+static char *print_object(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p) {
+    char **entries = NULL, **names = NULL;
+    char *out = NULL, *ptr, *ret, *str;
+    size_t len = 7, i = 0, j;
+    cJSON *child = item->child;
+    int numentries = 0, fail = 0;
+    size_t tmplen = 0;
+
+    while (child) numentries++, child = child->next;    // 计算对象元素个数
+
+    if (!numentries) {
+        if (p) out = ensure(p, 2);
+        else out = (char *) cJSON_malloc(2);
+        if (!out) return NULL;
+        ptr = out;
+        *ptr++ = '{';
+        if (fmt) {
+            *ptr++ = '\n';
+            for (i = 0; i < depth - 1; i++)     // 缩进
+                *ptr++ = '\t';
+        }
+        *ptr++ = '}';
+        *ptr = 0;
+        return out;
+    }
+
+    if (p) {
+        i = p->offset;
+        len = fmt ? 2 : 1;
+        ptr = ensure(p, len + 1);
+        if (!ptr) return NULL;
+        *ptr++ = '{';
+        if (fmt) *ptr++ = '\n';
+        *ptr = 0;
+        p->offset += len;
+        child = item->child;
+        depth++;
+
+        while (child) {
+            if (fmt) {
+                ptr = ensure(p, depth);
+                if (!ptr) return NULL;
+                for (j = 0; j < depth; j++)
+                    *ptr++ = '\t';
+                p->offset += depth;
+            }
+            print_string_ptr(child->string, p);
+
+            len = fmt ? 2 : 1;
+            ptr = ensure(p, len);
+            if (!ptr) return NULL;
+            *ptr++ = ':';
+            if (fmt) *ptr++ = '\t';
+            p->offset += len;
+
+            print_value(child, depth, fmt, p);
+            p->offset = update_offset(p);
+
+            len = (fmt ? 1 : 0) + (child->next ? 1 : 0);
+            ptr = ensure(p, len + 1);
+            if (child->next) *ptr++ = ',';
+            if (fmt) *ptr++ = '\n';
+            *ptr = 0;
+            p->offset += len;
+            child = child->next;
+        }
+        ptr = ensure(p, fmt ? (depth + 1) : 2);     // '}' '\0'
+        if (!ptr) return NULL;
+        if (fmt) for (i = 0; i < depth - 1; i++) *ptr++ = '\t';
+        *ptr++ = '}';
+        *ptr = 0;
+        out = (p->buffer) + i;
+    } else {
+        entries = (char **) cJSON_malloc(numentries * sizeof(char *));
+        if (!entries) return NULL;
+
+        names = (char **) cJSON_malloc(numentries * sizeof(char *));
+        if (!names) {
+            cJSON_free(entries);
+            return NULL;
+        }
+        memset(entries, 0, sizeof(char *) * numentries);
+        memset(names, 0, sizeof(char *) * numentries);
+
+        child = item->child;
+        depth++;
+        if (fmt) len += depth;
+
+        while (child) {
+            names[i] = str = print_string_ptr(child->string, 0);
+            entries[i++] = ret = print_value(child, depth, fmt, 0);
+            if (str && ret) len += strlen(ret) + strlen(str) + 2 + (fmt ? 2 + depth : 0);
+            else fail = 1;
+            child = child->next;
+        }
+
+        if (!fail) out = (char *) cJSON_malloc(len);
+        if (!out) fail = 1;
+
+        if (fail) {
+            for (i = 0; i < numentries; i++) {
+                if (names[i]) cJSON_free(names[i]);
+                if (entries[i]) cJSON_free(entries[i]);
+            }
+            return NULL;
+        }
+
+        *out = '{';
+        ptr = out + 1;
+        if (fmt) *ptr++ = '\n';
+        *ptr = 0;
+        for (i = 0; i < numentries; i++) {
+            if (fmt) {
+                for (j = 0; j < depth; j++)
+                    *ptr++ = '\t';
+            }
+            tmplen = strlen(names[i]);
+            memcpy(ptr, names[i], tmplen);
+            ptr += tmplen;
+            if (fmt) *ptr++ = '\n';
+            *ptr = 0;
+            cJSON_free(names[i]);
+            cJSON_free(entries[i]);
+        }
+
+        cJSON_free(names);
+        cJSON_free(entries);
+        if (fmt) {
+            for (i = 0; i < depth - 1; i++) *ptr++ = '\t';
+        }
+        *ptr++ = '}';
+        *ptr = 0;
+    }
+    return out;
+}
+
+int cJSON_GetArraySize(const cJSON *array) {
+    cJSON *c = array->child;
+    int i = 0;
+    while (c) {
+        ++i;
+        c = c->next;
+    }
+    return i;
+}
+
+cJSON *cJSON_GetArrayItem(const cJSON *array, int item) {
+    cJSON *c = array->child;
+    while (c && item > 0) {
+        --item;
+        c = c->next;
+    }
+    return c;
+}
+
+cJSON *cJSON_GetObjectItem(const cJSON *object, const char *string) {
+    cJSON *c = object->child;
+    while (c && cJSON_strcasecmp(c->string, string)) c = c->next;
+    return c;
 }
