@@ -957,6 +957,12 @@ static char *print_object(cJSON *item, int depth, cJSON_bool fmt, printbuffer *p
             tmplen = strlen(names[i]);
             memcpy(ptr, names[i], tmplen);
             ptr += tmplen;
+            *ptr++ = ':';
+            if (fmt) *ptr++ = ' ';
+            tmplen = strlen(entries[i]);
+            memcpy(ptr, entries[i], tmplen);
+            ptr += tmplen;
+            if (i != numentries - 1) *ptr++ = ',';
             if (fmt) *ptr++ = '\n';
             *ptr = 0;
             cJSON_free(names[i]);
