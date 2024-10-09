@@ -1,11 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
-#include "cJSON.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
+#include <climits>
+#include "cJSON.hpp"
 
 /* 错误信息 */
 static const char *ep;
@@ -18,7 +18,7 @@ static void *(*cJSON_malloc)(size_t sz) = malloc;
 static void (*cJSON_free)(void *ptr) = free;
 
 /* 设置 cJSON 的内存分配函数 */
-void cJSON_InitHooks(cJSON_Hooks *hooks) {
+[[maybe_unused]] void cJSON_InitHooks(cJSON_Hooks *hooks) {
     if (!hooks) { /* Reset hooks */
         cJSON_malloc = malloc;
         cJSON_free = free;
@@ -43,13 +43,13 @@ static char *cJSON_strdup(const char *str) {
     char *copy;
 
     len = strlen(str) + 1;
-    if (!(copy = (char *) cJSON_malloc(len))) return 0;
+    if (!(copy = (char *) cJSON_malloc(len))) return nullptr;
     memcpy(copy, str, len);
     return copy;
 }
 
 /* 创建一个新的 cJSON 对象并分配内存 */
-static cJSON *cJSON_New_Item(void) {
+static cJSON *cJSON_New_Item() {
     cJSON *node = (cJSON *) cJSON_malloc(sizeof(cJSON));
     if (node) memset(node, 0, sizeof(cJSON));
     return node;
@@ -78,7 +78,7 @@ void cJSON_Delete(cJSON *c) {
     double n = 0, sign = 1, scale = 0;      // sign 正负号，scale 小数部分位数
     int subscale = 0, signsubscale = 1;     // 科学计数法的指数部分和正负号
 
-    if (!num) return NULL;                  // 无效输入
+    if (!num) return nullptr;                  // 无效输入
 
     if (*num == '-') sign = -1, num++;       // 处理负号
     while (*num == '0') num++;        // 处理 0 开头的数字
@@ -133,7 +133,7 @@ typedef struct {
  */static char *ensure(printbuffer *p, size_t needed) {
     char *newbuffer;
     size_t newsize;
-    if (!p || !p->buffer) return NULL;
+    if (!p || !p->buffer) return nullptr;
     needed += p->offset;        // 计算新的长度
     if (needed <= p->length) return p->buffer + p->offset; // 如果长度足够，直接返回
 
@@ -528,7 +528,7 @@ static const char *parse_value(cJSON *item, const char *value) {
         return value + 5;
     }
 
-    if (!strncmp(value, "true", 5)) {
+    if (!strncmp(value, "true", 4)) {
         item->type = cJSON_True;            // 解析 true
         item->valueint = 1;
         return value + 4;

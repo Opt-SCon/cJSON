@@ -60,7 +60,7 @@ typedef struct cJSON_Hooks {
  * @param hooks
  * @return void
  */
-extern void cJSON_InitHooks(cJSON_Hooks *hooks);
+[[maybe_unused]] extern void cJSON_InitHooks(cJSON_Hooks *hooks);
 
 /**
  * @brief 将 JSON 字符串解析为 cJSON 对象。
